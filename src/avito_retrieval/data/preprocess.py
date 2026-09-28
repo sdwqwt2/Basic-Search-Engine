@@ -11,25 +11,18 @@ def normalize_text(text: str) -> str:
     return text.strip()
 
 
-def build_dense_item_text(df: pd.DataFrame, max_params_chars: int = 200, max_desc_chars: int = 250) -> pd.Series:
+def build_dense_item_text(df: pd.DataFrame, max_desc_chars: int = 600) -> pd.Series:
     """
-    Текст объявления для bi-encoder: title + params + description, каждая часть обрезана по символам.
-    params обрезаются, потому что у части объявлений это длинные прайс-листы, которые иначе
-    съедают окно 128 токенов до description. Используется и в обучении, и в индексации.
+    Текст объявления для bi-encoder: title + params + ОБРЕЗАННОЕ описание.
+    Обрезаем по символам (не токенам) заранее, чтобы не тратить время
+    токенизатора на текст, который всё равно будет усечён — и чтобы
+    самый информативный кусок (title) гарантированно попал в окно модели.
     """
     title = df["item_title_raw"].fillna("")
-    params = df["item_infm_params_text"].fillna("").str.slice(0, max_params_chars)
+    params = df["item_infm_params_text"].fillna("")
     desc = df["item_description_raw"].fillna("").str.slice(0, max_desc_chars)
-    return (title + ". " + params + ". " + desc).map(normalize_text)
-
-
-def build_dense_query_text(query: pd.Series, params: pd.Series, use_params: bool = True) -> pd.Series:
-    """Текст запроса для bi-encoder (без префикса 'query: ', его добавляет вызывающий код)."""
-    query = query.fillna("")
-    if not use_params:
-        return query
-    params = params.fillna("")
-    return query.where(params == "", query + ". " + params)
+    text = title + ". " + params + ". " + desc
+    return text.map(normalize_text)
 
 
 def build_bm25_item_text(df: pd.DataFrame) -> pd.Series:

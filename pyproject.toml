@@ -5,25 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "avito_retrieval"
 version = "0.1.0"
-requires-python = "3.11"
 dependencies = [
     "pandas",
     "pyarrow",
-    "numpy",
     "faiss-cpu",
     "rank-bm25",
     "sentence-transformers",
-    "transformers",
-    "torch",
-    "scikit-learn",
-    "tqdm",
+    "tqdm"
 ]
-
-[project.optional-dependencies]
-notebooks = [
-    "jupyter",
-    "matplotlib",
-]
-
-[tool.setuptools.packages.find]
-where = ["src"]
