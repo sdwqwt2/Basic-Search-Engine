@@ -38,7 +38,7 @@ def parse_args():
         help="Построить индексы заново вместо загрузки с диска (медленно, ~несколько часов)",
     )
     parser.add_argument("--model-name", type=str, default=config.BIENCODER_MODEL_NAME)
-    parser.add_argument("--max-seq-length", type=int, default=128)
+    parser.add_argument("--max-seq-length", type=int, default=192)
     parser.add_argument("--batch-size", type=int, default=128)
     return parser.parse_args()
 
