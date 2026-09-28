@@ -25,26 +25,15 @@ class BM25Retriever:
         self.bm25 = BM25Okapi(tokenized_corpus)
         return self
 
-    def search(
-            self,
-            query_text: str,
-            top_k: int = 100,
-            allowed_categories: set | None = None,
-    ) -> list[tuple[str, float]]:
-        tokens = tokenize_simple(query_text)
-        scores = self.bm25.get_scores(tokens)
-
-        if allowed_categories:
-            mask = np.isin(self.item_categories, list(allowed_categories))
+    def search(self, query_text: str, top_k: int = 100, mask: np.ndarray | None = None) -> list[tuple[str, float]]:
+        scores = self.bm25.get_scores(tokenize_simple(query_text))
+        if mask is not None:
             scores = np.where(mask, scores, -np.inf)
-
-        # argpartition быстрее полного argsort на больших корпусах (O(n) vs O(n log n))
-        n = len(scores)
-        k = min(top_k, n)
+        k = min(top_k, len(scores))
         top_idx = np.argpartition(scores, -k)[-k:]
         top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]
-
-        return [(self.item_ids[i], float(scores[i])) for i in top_idx if scores[i] != -np.inf]
+        # scores > 0: документы без единого совпадения токенов только шумят в RRF
+        return [(self.item_ids[i], float(scores[i])) for i in top_idx if scores[i] > 0]
 
     def save(self, path: str):
         with open(path, "wb") as f:

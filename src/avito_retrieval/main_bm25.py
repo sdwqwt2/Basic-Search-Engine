@@ -29,7 +29,7 @@ def parse_args():
     p.add_argument("--no-category-filter", action="store_true",
                    help="Искать по всему корпусу, без фильтра по категории")
     p.add_argument("--index-dir", type=str, default=str(config.DATA_INDICES))
-    p.add_argument("--output-path", type=str, default=str(config.ROOT_DIR / "answer_bm25.csv"))
+    p.add_argument("--output-path", type=str, default=str(config.ROOT_DIR / "answer.csv"))
     p.add_argument("--limit", type=int, default=None, help="Только первые N запросов (для замера времени)")
     return p.parse_args()
 
