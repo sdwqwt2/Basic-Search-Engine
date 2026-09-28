@@ -26,4 +26,4 @@ BIENCODER_CANDIDATES = [
     "ai-forever/sbert_large_nlu_ru",
 ]
 BIENCODER_MODEL_NAME = BIENCODER_CANDIDATES[0]  # выбор после сравнения
-MAX_SEQ_LENGTH = 128     # уточнить после EDA длин
+MAX_SEQ_LENGTH = 512     # уточнить после EDA длин
