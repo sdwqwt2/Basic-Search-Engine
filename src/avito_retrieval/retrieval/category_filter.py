@@ -1,27 +1,25 @@
 import pandas as pd
-import numpy as np
 
 
 class CategoryFilter:
     """
-    Фильтрует корпус объявлений по категории запроса перед текстовым поиском.
+    Определяет допустимые item_category_id для запроса.
 
-    EDA показал: у >99.99% запросов одна категория объявлений покрывает
-    >=80% реальных выборов пользователей. Поэтому используем search_category
-    (или, если его нет / он не совпадает по значениям с item_category_id,
-    строим маппинг запрос -> топ категорий по train) как первичный фильтр.
+    Важно: search_category в бенчмарке почти всегда 0 (неизвестно) —
+    unique-значения [114, 0], тогда как item_category_id имеет 47 значений.
+    Поэтому search_category используется, только если он попадает в множество
+    реальных категорий объявлений; основной источник — маппинг текста запроса
+    к категориям, обученный на train.parquet.
     """
 
-    def __init__(self, top_n_categories: int = 1):
+    def __init__(self, top_n_categories: int = 2, unknown_category_value=0):
         self.top_n_categories = top_n_categories
+        self.unknown_category_value = unknown_category_value
         self.query_to_categories: dict[str, set] = {}
+        self.known_item_categories: set = set()
 
-    def fit(self, train_df: pd.DataFrame):
-        """
-        Строит маппинг нормализованный search_query -> набор наиболее частых
-        item_category_id, на случай если search_category недостаточно надёжен
-        или отсутствует в бенчмарке в сопоставимом виде с item_category_id.
-        """
+    def fit(self, train_df: pd.DataFrame, known_item_categories: set):
+        self.known_item_categories = known_item_categories
         grouped = (
             train_df.groupby("search_query")["item_category_id"]
             .apply(lambda s: set(s.value_counts().head(self.top_n_categories).index))
@@ -31,25 +29,21 @@ class CategoryFilter:
 
     def get_allowed_categories(self, search_query: str, search_category=None) -> set | None:
         """
-        Возвращает множество допустимых item_category_id для запроса.
-        Приоритет: 1) прямое поле search_category, если оно валидно,
-                   2) обученный маппинг по тексту запроса,
-                   3) None (фильтр не применяется — fallback на полный корпус).
+        Приоритет:
+        1) search_category, если он валиден (не unknown) и реально встречается
+           среди item_category_id — прямой, самый надёжный сигнал.
+        2) маппинг по тексту запроса из train.
+        3) None -> используется полный (fallback) индекс.
         """
-        if search_category is not None and not pd.isna(search_category):
+        if (
+                search_category is not None
+                and not pd.isna(search_category)
+                and search_category != self.unknown_category_value
+                and search_category in self.known_item_categories
+        ):
             return {search_category}
+
         if search_query in self.query_to_categories:
             return self.query_to_categories[search_query]
-        return None
 
-    def filter_items(self, items_df: pd.DataFrame, allowed_categories: set | None) -> pd.DataFrame:
-        """Возвращает подмножество items_df, если фильтр применим, иначе весь items_df."""
-        if not allowed_categories:
-            return items_df
-        mask = items_df["item_category_id"].isin(allowed_categories)
-        filtered = items_df[mask]
-        # Safety net: если фильтр слишком агрессивный и почти ничего не оставил
-        # (например, категория в бенчмарке отличается от train), откатываемся к полному корпусу
-        if len(filtered) < 20:
-            return items_df
-        return filtered
+        return None
