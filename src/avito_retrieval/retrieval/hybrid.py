@@ -6,7 +6,7 @@ from avito_retrieval.retrieval.category_filter import CategoryFilter
 from avito_retrieval.retrieval.location_filter import LocationFilter
 from avito_retrieval.retrieval.lexical import BM25Retriever
 from avito_retrieval.retrieval.dense import DenseRetriever
-from avito_retrieval.data.preprocess import build_bm25_item_text, build_dense_item_text
+from avito_retrieval.data.preprocess import build_bm25_item_text, build_dense_item_text, build_dense_query_text
 from avito_retrieval import config
 
 
@@ -140,10 +140,9 @@ class HybridRetriever:
             for q, m in zip(q_text, masks):
                 bm25_all.append(self.bm25.search(q, top_k=top_k_each, mask=m))
 
-            dense_q = [
-                f"{q}. {p}".strip() if (self.use_query_params and p) else q
-                for q, p in zip(q_text, q_par)
-            ]
+            dense_q = build_dense_query_text(
+                pd.Series(q_text), pd.Series(q_par), use_params=self.use_query_params
+            ).tolist()
             dense_all.extend(self.dense.search_batch(dense_q, masks, top_k=top_k_each))
         return bm25_all, dense_all
 
